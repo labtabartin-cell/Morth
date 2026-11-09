@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مبدل کلمه ↔ مورس (صدا)</title>
+<style>
+  :root{
+    --bg:#0e1117; --card:#161b22; --card2:#1c2330; --line:#2b3444;
+    --txt:#e6edf3; --dim:#8b98a9; --acc:#3fb950; --acc2:#58a6ff; --warn:#f0883e;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:24px 14px 60px;
+    background:radial-gradient(1200px 600px at 50% -200px,#1b2534,#0e1117 60%);
+    color:var(--txt); font-family:Tahoma,Vazirmatn,system-ui,sans-serif; line-height:1.7;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 6px;text-align:center}
+  .sub{text-align:center;color:var(--dim);font-size:13px;margin:0 0 22px}
+  .card{
+    background:linear-gradient(180deg,var(--card),var(--card2));
+    border:1px solid var(--line); border-radius:16px;
+    padding:16px 16px 18px; margin-bottom:16px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  h2{font-size:15px;margin:0 0 12px;color:var(--acc2);font-weight:600}
+  textarea{
+    width:100%; background:#0b0f14; color:var(--txt);
+    border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; font-family:inherit; font-size:14px; resize:vertical;
+    outline:none;
+  }
+  textarea:focus{border-color:var(--acc2)}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+  label{font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:6px}
+  input[type=range]{width:110px;accent-color:var(--acc2)}
+  input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px}
+  button{
+    background:#232c3a; color:var(--txt); border:1px solid var(--line);
+    padding:8px 15px; border-radius:10px; cursor:pointer;
+    font-family:inherit; font-size:13.5px; transition:.15s;
+  }
+  button:hover{background:#2d3849;border-color:#3d4b60}
+  button:active{transform:translateY(1px)}
+  button.primary{background:linear-gradient(180deg,#238636,#1b6f2d);border-color:#2ea043}
+  button.primary:hover{background:linear-gradient(180deg,#2ea043,#238636)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .morse{
+    background:#0b0f14; border:1px solid var(--line); border-radius:10px;
+    padding:12px; margin:12px 0 0; min-height:52px; font-size:16px;
+    font-family:"Courier New",monospace; letter-spacing:2px; direction:ltr;
+    text-align:left; white-space:pre-wrap; word-break:break-word;
+    color:#9ae6b4; overflow:auto; max-height:190px;
+  }
+  .morse.out{color:#ffd580}
+  .lamp{
+    width:18px;height:18px;border-radius:50%;background:#1f2833;
+    border:1px solid var(--line);display:inline-block;vertical-align:middle;
+    transition:background .05s, box-shadow .05s;
+  }
+  .lamp.on{background:#ffd166;box-shadow:0 0 14px 3px rgba(255,209,102,.75)}
+  .meter{height:10px;background:#0b0f14;border:1px solid var(--line);
+    border-radius:99px;overflow:hidden;margin-top:14px}
+  .meter > div{height:100%;width:0%;background:linear-gradient(90deg,#2ea043,#ffd166);
+    transition:width .06s linear}
+  .status{font-size:12.5px;color:var(--dim);margin-top:8px;min-height:20px}
+  .status b{color:var(--acc)}
+  .note{font-size:12px;color:var(--dim);text-align:center;line-height:2}
+  kbd{background:#0b0f14;border:1px solid var(--line);border-radius:5px;
+      padding:1px 6px;font-family:monospace;direction:ltr;display:inline-block}
+  .badge{font-size:11px;color:var(--warn);border:1px solid #4a3520;background:#231a10;
+    border-radius:99px;padding:1px 9px;margin-right:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🔊 مبدل کلمه ↔ مورس (صدا)</h1>
+  <p class="sub">متن را به کد مورس و صدا تبدیل کن — یا صدای مورس را با میکروفون بشنو و به متن برگردان.</p>
+
+  <!-- ============ بخش ۱ ============ -->
+  <section class="card">
+    <h2>۱) متن ← مورس ← صدا</h2>
+    <textarea id="txt" rows="3" placeholder="مثلاً: SOS یا Hello World یا سلام">SOS</textarea>
+
+    <div class="row">
+      <label>سرعت <input type="range" id="wpm" min="5" max="30" value="12"><span id="wpmv">12</span> WPM</label>
+      <label>فرکانس <input type="range" id="freq" min="300" max="1200" step="10" value="650"><span id="freqv">650</span> Hz</label>
+      <label>صدا <input type="range" id="vol" min="0" max="100" value="40"></label>
+      <label><input type="checkbox" id="faEnc"> الفبای فارسی</label>
+    </div>
+
+    <div class="row">
+      <button id="btnPlay" class="primary">▶ تبدیل و پخش</button>
+      <button id="btnConv">فقط تبدیل</button>
+      <button id="btnStop">■ توقف</button>
+      <button id="btnCopy">کپی مورس</button>
+      <span class="lamp" id="lamp1"></span>
+    </div>
+
+    <pre id="morseOut" class="morse" dir="ltr"></pre>
+  </section>
+
+  <!-- ============ بخش ۲ ============ -->
+  <section class="card">
+    <h2>۲) صدا ← مورس ← متن <span class="badge">میکروفون</span></h2>
+
+    <div class="row">
+      <button id="btnListen" class="primary">🎤 شروع گوش دادن</button>
+      <button id="btnStopListen">توقف</button>
+      <button id="btnClearOut">پاک کردن خروجی</button>
+      <label><input type="checkbox" id="faDec"> خروجی فارسی</label>
+    </div>
+
+    <div class="meter"><div id="level"></div></div>
+    <div class="status" id="micStatus">غیرفعال — روی «شروع گوش دادن» بزنید.</div>
+
+    <pre id="decoded" class="morse out" dir="ltr"></pre>
+  </section>
+
+  <!-- ============ بخش ۳ ============ -->
+  <section class="card">
+    <h2>۳) مورس ← متن (دستی)</h2>
+    <textarea id="morseIn" rows="3" dir="ltr" placeholder=".... . .-.. .-.. --- / .-- --- .-. .-.. -.."></textarea>
+    <div class="row">
+      <button id="btnDecode">تبدیل به متن</button>
+      <label><input type="checkbox" id="faDec2"> نمایش فارسی</label>
+    </div>
+    <pre id="textOut" class="morse out"></pre>
+  </section>
+
+  <p class="note">
+    نقطه = <kbd>.</kbd> &nbsp; خط تیره = <kbd>-</kbd> &nbsp;|&nbsp; فاصله بین حروف = <kbd>space</kbd> &nbsp;|&nbsp; فاصله بین کلمات = <kbd>/</kbd><br>
+    برای دقت بیشتر در شناسایی، هنگام کالیبراسیون (نیم‌ثانیه اول) سکوت کنید.
+  </p>
+</div>
+
+<script>
+/* =========================================================
+   ۱. جداول مورس
+   ========================================================= */
+const LATIN = {
+  A:'.-', B:'-...', C:'-.-.', D:'-..', E:'.', F:'..-.', G:'--.', H:'....', I:'..', J:'.---',
+  K:'-.-', L:'.-..', M:'--', N:'-.', O:'---', P:'.--.', Q:'--.-', R:'.-.', S:'...', T:'-',
+  U:'..-', V:'...-', W:'.--', X:'-..-', Y:'-.--', Z:'--..',
+  '0':'-----', '1':'.----', '2':'..---', '3':'...--', '4':'....-',
+  '5':'.....', '6':'-....', '7':'--...', '8':'---..', '9':'----.',
+  '.':'.-.-.-', ',':'--..--', '?':'..--..', "'":'.----.', '!':'-.-.--', '/':'-..-.',
+  '(':'-.--.', ')':'-.--.-', '&':'.-...', ':':'---...', ';':'-.-.-.', '=':'-...-',
+  '+':'.-.-.', '-':'-....-', '_':'..--.-', '"':'.-..-.', '$':'...-..-', '@':'.--.-.'
+};
+
+/* جدول مورس فارسی (رایج در ایران) — برخی کدها با حروف لاتین هم‌پوشانی دارند */
+const PERSIAN = {
+  'ا':'.-', 'ب':'-...', 'پ':'.--.', 'ت':'-', 'ث':'-.-.', 'ج':'.---', 'چ':'-.-.',
+  'ح':'....', 'خ':'-..', 'د':'-..', 'ذ':'--..', 'ر':'.-.', 'ز':'--..', 'ژ':'...-',
+  'س':'...', 'ش':'----', 'ص':'-.-', 'ض':'..-.', 'ط':'..-', 'ظ':'.-..', 'ع':'.-.-',
+  'غ':'--.', 'ف':'..-.', 'ق':'--.-', 'ک':'-.-', 'گ':'--.', 'ل':'.-..', 'م':'--',
+  'ن':'-.', 'و':'.--', 'ه':'.', 'ی':'..'
+};
+
+function buildReverse(map, base){
+  const rev = Object.assign({}, base || {});
+  for (const k in map) rev[map[k]] = k;   // اولیویت با map جدید
+  return rev;
+}
+const REV_LATIN   = buildReverse(LATIN);
+const REV_PERSIAN = buildReverse(PERSIAN, REV_LATIN);   // حروف فارسی روی لاتین بازنویسی می‌شوند
+
+/* نرمال‌سازی حروف عربی/فارسی */
+function normalizeFa(s){
+  return s.replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/ۀ/g,'ه').replace(/ة/g,'ه');
+}
+
+/* =========================================================
+   ۲. تبدیل متن ↔ مورس
+   ========================================================= */
+function textToMorse(text, useFa){
+  const map = useFa ? Object.assign({}, LATIN, PERSIAN) : LATIN;
+  const src = useFa ? normalizeFa(text) : text.toUpperCase();
+  const out = [];
+  for (const ch of src){
+    if (ch === ' ' || ch === '\n' || ch === '\t'){ out.push('/'); continue; }
+    const code = map[ch] || map[ch.toUpperCase?.()];
+    if (code) out.push(code);
+  }
+  // حذف اسلش‌های تکراری/ابتدا و انتها
+  return out.join(' ').replace(/\s*\/\s*(\/\s*)+/g, ' / ').replace(/^\/\s*|\s*\/$/g,'').trim();
+}
+
+function morseToText(str, useFa){
+  const rev = useFa ? REV_PERSIAN : REV_LATIN;
+  const tokens = str.trim().split(/\s+/);
+  let out = '';
+  for (const tok of tokens){
+    if (!tok) continue;
+    if (tok === '/' || tok === '|'){ out += ' '; continue; }
+    out += (rev[tok] !== undefined ? rev[tok] : '؟');
+  }
+  return out.replace(/\s+/g,' ').trim();
+}
+
+/* =========================================================
+   ۳. موتور صدا
+   ========================================================= */
+let audioCtx = null;
+function ac(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+const lampEl = document.getElementById('lamp1');
+const lampOn  = () => lampEl.classList.add('on');
+const lampOff = () => lampEl.classList.remove('on');
+
+let playTimers = [];
+let playNodes  = null;
+
+function stopPlayback(){
+  playTimers.forEach(t => clearTimeout(t));
+  playTimers = [];
+  if (playNodes){
+    try { playNodes.osc.stop(); } catch(e){}
+    try { playNodes.osc.disconnect(); playNodes.gain.disconnect(); } catch(e){}
+    playNodes = null;
+  }
+  lampOff();
+}
+
+/**
+ * پخش رشته‌ی مورس
+ * ساختار: '.' و '-' عناصر | ' ' بین حروف | '/' بین کلمات
+ */
+function playMorse(morse, {wpm, freq, vol}){
+  stopPlayback();
+  if (!morse.trim()) return 0;
+
+  const ctx  = ac();
+  const unit = 1.2 / wpm;           // ثانیه — استاندارد PARIS
+  const t0   = ctx.currentTime + 0.15;
+
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t0);
+  playNodes = {osc, gain};
+
+  let t = t0;
+  const marks = [];                  // {s, e} زمان‌های روشن بودن
+
+  for (const ch of morse){
+    if (ch === '.'){
+      const d = unit;
+      marks.push({s:t, e:t+d});
+      t += d + unit;
+    } else if (ch === '-'){
+      const d = unit * 3;
+      marks.push({s:t, e:t+d});
+      t += d + unit;
+    } else if (ch === ' '){
+      t += unit * 2;                 // جمعاً ۳ واحد فاصله بین حروف
+    } else if (ch === '/'){
+      t += unit * 4;                 // جمعاً ۷ واحد فاصله بین کلمات
+    }
+  }
+
+  // پاکت صوتی برای حذف تق‌تق (click)
+  for (const {s, e} of marks){
+    const r = Math.min(0.006, (e - s) / 4);
+    gain.gain.setValueAtTime(0, s);
+    gain.gain.linearRampToValueAtTime(vol, s + r);
+    gain.gain.setValueAtTime(vol, e - r);
+    gain.gain.linearRampToValueAtTime(0, e);
+  }
+
+  const endT = t;
+  osc.stop(endT + 0.1);
+
+  // چراغ و پایان
+  const nowCtx  = ctx.currentTime;
+  const delay0  = (t0 - nowCtx) * 1000;
+  for (const {s, e} of marks){
+    playTimers.push(setTimeout(lampOn,  Math.max(0, delay0 + (s - t0)*1000)));
+    playTimers.push(setTimeout(lampOff, Math.max(0, delay0 + (e - t0)*1000)));
+  }
+  const totalMs = delay0 + (endT - t0) * 1000;
+  playTimers.push(setTimeout(() => { lampOff(); playNodes = null; }, totalMs + 150));
+
+  return totalMs;
+}
+
+/* =========================================================
+   ۴. شناسایی مورس از میکروفون
+   ========================================================= */
+let mic = null;          // {stream, src, an, buf}
+let micTimer = null;
+
+const dec = {
+  unit: 0.1,             // تخمین طول واحد (ثانیه)
+  inTone: false,
+  toneStart: 0,
+  silenceStart: 0,
+  marks: [],             // مدت‌زمان‌های علامت‌های حرف جاری (ms)
+  noise: 0.002,
+  spaceDone: true,
+  calibrating: false,
+  calEnd: 0,
+  calMax: 0
+};
+
+const levelEl  = document.getElementById('level');
+const statusEl = document.getElementById('micStatus');
+const outEl    = document.getElementById('decoded');
+
+function appendDecoded(s){
+  outEl.textContent += s;
+  outEl.scrollTop = outEl.scrollHeight;
+}
+
+function setStatus(html){ statusEl.innerHTML = html; }
+
+function resetDecoder(keepText){
+  dec.inTone = false;
+  dec.toneStart = 0;
+  dec.silenceStart = 0;
+  dec.marks = [];
+  dec.spaceDone = true;
+  dec.calibrating = false;
+  const wpm = +document.getElementById('wpm').value;
+  dec.unit = 1.2 / wpm;
+  if (!keepText) outEl.textContent = '';
+}
+
+async function startListening(){
+  if (mic) return;
+  try{
+    const ctx = ac();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+    });
+    const src = ctx.createMediaStreamSource(stream);
+    const an  = ctx.createAnalyser();
+    an.fftSize = 1024;
+    an.smoothingTimeConstant = 0;
+    src.connect(an);
+
+    mic = { stream, src, an, buf: new Float32Array(an.fftSize) };
+    resetDecoder(false);
+
+    // کالیبراسیون نویز پس‌زمینه
+    dec.calibrating = true;
+    dec.calEnd = performance.now() + 600;
+    dec.calMax = 0;
+    setStatus('در حال کالیبراسیون… لطفاً سکوت کنید 🔇');
+
+    micTimer = setInterval(tickDecoder, 8);
+
+    document.getElementById('btnListen').disabled = true;
+    document.getElementById('btnStopListen').disabled = false;
+  } catch(err){
+    alert('دسترسی به میکروفون ممکن نشد:\n' + err.message);
+  }
+}
+
+function stopListening(){
+  if (micTimer){ clearInterval(micTimer); micTimer = null; }
+  if (mic){
+    try{ mic.stream.getTracks().forEach(t => t.stop()); }catch(e){}
+    try{ mic.src.disconnect(); mic.an.disconnect(); }catch(e){}
+    mic = null;
+  }
+  lampOff();
+  levelEl.style.width = '0%';
+  setStatus('غیرفعال — روی «شروع گوش دادن» بزنید.');
+  document.getElementById('btnListen').disabled = false;
+  document.getElementById('btnStopListen').disabled = true;
+}
+
+/* --- تخمین تطبیقی طول واحد --- */
+function updateUnit(d){
+  if (d < dec.unit * 1.9){                 // احتمالاً نقطه
+    dec.unit = dec.unit * 0.80 + d * 0.20;
+  } else if (d < dec.unit * 4.5){          // احتمالاً خط تیره
+    const est = d / 3;
+    if (Math.abs(est - dec.unit) < dec.unit * 0.7){
+      dec.unit = dec.unit * 0.90 + est * 0.10;
+    }
+  }
+  dec.unit = Math.min(0.5, Math.max(0.02, dec.unit));
+}
+
+/* --- تبدیل علامت‌های جمع‌شده به حرف --- */
+function commitLetter(){
+  if (!dec.marks.length) return;
+  const code = dec.marks.map(d => d < dec.unit * 2 ? '.' : '-').join('');
+  dec.marks = [];
+  const rev = document.getElementById('faDec').checked ? REV_PERSIAN : REV_LATIN;
+  const ch  = rev[code];
+  appendDecoded(ch !== undefined ? ch : '؟');
+}
+
+/* --- حلقه‌ی اصلی پردازش --- */
+function tickDecoder(){
+  if (!mic) return;
+  const now = performance.now();
+  const an  = mic.an;
+
+  // محاسبه RMS
+  let rms = 0;
+  if (an.getFloatTimeDomainData){
+    an.getFloatTimeDomainData(mic.buf);
+    let sum = 0;
+    for (let i = 0; i < mic.buf.length; i++) sum += mic.buf[i] * mic.buf[i];
+    rms = Math.sqrt(sum / mic.buf.length);
+  } else {
+    const b = new Uint8Array(an.fftSize);
+    an.getByteTimeDomainData(b);
+    let sum = 0;
+    for (let i = 0; i < b.length; i++){ const v = (b[i] - 128) / 128; sum += v * v; }
+    rms = Math.sqrt(sum / b.length);
+  }
+
+  levelEl.style.width = Math.min(100, rms * 700) + '%';
+
+  // ---- کالیبراسیون ----
+  if (dec.calibrating){
+    dec.calMax = Math.max(dec.calMax, rms);
+    if (now >= dec.calEnd){
+      dec.noise = Math.max(0.0008, dec.calMax);
+      dec.calibrating = false;
+      setStatus('آماده — منتظر سیگنال مورس… (سرعت تخمینی: <b>' +
+                Math.round(1.2 / dec.unit) + ' WPM</b>)');
+    }
+    return;
+  }
+
+  const thr = Math.max(dec.noise * 3.5, 0.006);
+  const isOn = dec.inTone ? (rms > thr * 0.6) : (rms > thr);
+
+  if (isOn && !dec.inTone){
+    /* شروع صدا */
+    dec.inTone = true;
+    if (dec.silenceStart){
+      const gap = now - dec.silenceStart;
+      if (gap > dec.unit * 2500 && dec.marks.length) commitLetter();
+      dec.silenceStart = 0;
+    }
+    dec.toneStart = now;
+    dec.spaceDone = false;
+    lampOn();
+
+  } else if (!isOn && dec.inTone){
+    /* پایان صدا */
+    dec.inTone = false;
+    const dur = now - dec.toneStart;
+    if (dur >= 15){                        // حذف کلیک‌های کوتاه
+      dec.marks.push(dur);
+      updateUnit(dur);
+    }
+    dec.silenceStart = now;
+    lampOff();
+
+  } else if (!isOn && !dec.inTone){
+    /* سکوت جاری */
+    if (dec.silenceStart){
+      const gap = now - dec.silenceStart;
+      const u = dec.unit * 1000;
+
+      // به‌روزرسانی آرام نویز پس‌زمینه
+      if (gap > 120) dec.noise = dec.noise * 0.98 + rms * 0.02;
+
+      // مرز حرف
+      if (dec.marks.length && gap > u * 2.6) commitLetter();
+
+      // مرز کلمه
+      if (!dec.marks.length && !dec.spaceDone && gap > u * 6.5){
+        appendDecoded(' ');
+        dec.spaceDone = true;
+      }
+    }
+  }
+
+  // نمایش زنده‌ی علامت‌های در حال جمع‌آوری
+  if (dec.marks.length){
+    const code = dec.marks.map(d => d < dec.unit * 2 ? '.' : '-').join('');
+    setStatus('دریافت… <b>' + code + '</b> &nbsp;|&nbsp; واحد ≈ ' +
+              Math.round(dec.unit * 1000) + 'ms');
+  }
+}
+
+/* =========================================================
+   ۵. اتصال به رابط کاربری
+   ========================================================= */
+const $ = id => document.getElementById(id);
+
+// اسلایدرها
+$('wpm').oninput  = e => { $('wpmv').textContent  = e.target.value;
+                           dec.unit = 1.2 / +e.target.value; };
+$('freq').oninput = e => { $('freqv').textContent = e.target.value; };
+$('vol').oninput  = e => {};
+
+// تبدیل متن به مورس
+function doConvert(){
+  const morse = textToMorse($('txt').value, $('faEnc').checked);
+  $('morseOut').textContent = morse || '—';
+  return morse;
+}
+$('btnConv').onclick = doConvert;
+
+// تبدیل و پخش
+$('btnPlay').onclick = () => {
+  const morse = doConvert();
+  if (!morse) return;
+  const ms = playMorse(morse, {
+    wpm : +$('wpm').value,
+    freq: +$('freq').value,
+    vol : (+$('vol').value) / 100 * 0.6
+  });
+  setStatus('در حال پخش…');
+  setTimeout(() => {}, ms);
+};
+
+$('btnStop').onclick = () => { stopPlayback(); };
+
+$('btnCopy').onclick = async () => {
+  const t = $('morseOut').textContent;
+  if (!t || t === '—') return;
+  try{
+    await navigator.clipboard.writeText(t);
+    $('btnCopy').textContent = '✔ کپی شد';
+    setTimeout(() => $('btnCopy').textContent = 'کپی مورس', 1400);
+  }catch(e){ alert('کپی ممکن نشد'); }
+};
+
+// میکروفون
+$('btnListen').onclick     = startListening;
+$('btnStopListen').onclick = stopListening;
+$('btnStopListen').disabled = true;
+$('btnClearOut').onclick   = () => { outEl.textContent = ''; resetDecoder(true); };
+
+// تبدیل دستی مورس به متن
+$('btnDecode').onclick = () => {
+  const useFa = $('faDec2').checked;
+  $('textOut').textContent = morseToText($('morseIn').value, useFa) || '—';
+};
+
+// پیش‌پرکردن نمونه
+$('morseIn').value = '.... . .-.. .-.. --- / .-- --- .-. .-.. -..';
+$('textOut').textContent = morseToText($('morseIn').value, false);
+doConvert();
+
+// آزادسازی منابع هنگام خروج
+window.addEventListener('beforeunload', () => { stopListening(); stopPlayback(); });
+</script>
+</body>
+</html>
